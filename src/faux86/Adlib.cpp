@@ -72,7 +72,7 @@ Adlib::Adlib(VM& inVM)
 
 void Adlib::init()
 {
-	uint16_t baseport = vm.config.adlib.port;
+	uint16_t baseport = vm.config->adlib.port;
 	vm.ports.setPortRedirector(baseport, baseport + 1, this);
-	OPL3_Reset(&opl3, vm.config.audio.sampleRate);
+	OPL3_Reset(&opl3, vm.config->audio.sampleRate);
 }

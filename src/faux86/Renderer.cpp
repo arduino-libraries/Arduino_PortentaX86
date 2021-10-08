@@ -23,6 +23,7 @@
 #include "Renderer.h"
 #include "Profiler.h"
 #include "MemUtils.h"
+#include "ea_malloc.h"
 
 using namespace Faux86;
 
@@ -58,7 +59,6 @@ Renderer::Renderer(VM& inVM)
 
 Renderer::~Renderer()
 {
-	delete[] scalemap;
 	if (renderSurface && renderSurface != hostSurface)
 	{
 		RenderSurface::destroy(renderSurface);
@@ -67,7 +67,7 @@ Renderer::~Renderer()
 
 void Renderer::init()
 {
-	fb = &vm.config.hostSystemInterface->getFrameBuffer();
+	fb = &vm.config->hostSystemInterface->getFrameBuffer();
 
 	fb->init(OUTPUT_FRAMEBUFFER_WIDTH, OUTPUT_FRAMEBUFFER_HEIGHT);
 	//fb->init(320, 200);
@@ -108,7 +108,7 @@ void Renderer::createScaleMap()
 	log(LogVerbose, "Creating scale map");
 	if (!scalemap)
 	{
-		scalemap = new uint32_t[(hostSurface->width + 1) * hostSurface->height];
+		scalemap = (uint32_t*)ea_malloc((hostSurface->width + 1) * hostSurface->height * sizeof(uint32_t));
 	}
 
 	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
@@ -152,7 +152,7 @@ int RenderTask::update()
 
 	uint64_t drawStartTime = vm.timing.getTicks();
 
-	//if (vm.video.updatedscreen || vm.config.renderBenchmark)
+	//if (vm.video.updatedscreen || vm.config->renderBenchmark)
 	//{
 	//	vm.video.updatedscreen = 0;
 	//	if (renderer.fb != nullptr)
@@ -164,8 +164,8 @@ int RenderTask::update()
 
 	if (vm.video.updatedscreen)
 	{
-		renderer.draw();
 		renderer.fb->setPalette(vm.video.getCurrentPalette());
+		renderer.draw();
 		vm.video.updatedscreen = false;
 	}
 
@@ -180,11 +180,11 @@ int RenderTask::update()
 	return delayTime;
 	
 
-	//if (!vm.config.renderBenchmark)
+	//if (!vm.config->renderBenchmark)
 	//{
-	//	delaycalc = vm.config.frameDelay - (uint32_t)(vm.timing.getMS() - cursorcurtick);
-	//	if (delaycalc > vm.config.frameDelay) 
-	//		delaycalc = vm.config.frameDelay;
+	//	delaycalc = vm.config->frameDelay - (uint32_t)(vm.timing.getMS() - cursorcurtick);
+	//	if (delaycalc > vm.config->frameDelay) 
+	//		delaycalc = vm.config->frameDelay;
 	//	return delaycalc;
 	//}
 	//
@@ -486,6 +486,8 @@ void Renderer::markTextDirty(uint32_t x, uint32_t y)
 	}
 }
 
+#include "Arduino.h"
+
 void Renderer::draw () 
 {
 	//ProfileBlock block(vm.timing, "Renderer::draw");
@@ -501,7 +503,7 @@ void Renderer::draw ()
 		//ProfileBlock innerblock(vm.timing, "Renderer::draw inner");
 
 
-
+		//SCB_CleanInvalidateDCache();
 		uint8_t* RAM = vm.memory.RAM;
 		uint8_t* portram = vm.ports.portram;
 		uint32_t planemode, chary, charx, vidptr, curpixel, usepal, intensity, x1;
@@ -712,7 +714,7 @@ void Renderer::draw ()
 
 	if (renderSurface != hostSurface)
 	{
-		if (vm.config.noSmooth)
+		if (vm.config->noSmooth)
 		{
 			if (nativeWidth == hostSurface->width && nativeHeight == hostSurface->height)
 				simpleBlit();

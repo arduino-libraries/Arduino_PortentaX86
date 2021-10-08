@@ -28,7 +28,7 @@ using namespace Faux86;
 void SerialMouse::bufsermousedata (uint8_t value) 
 {
 	if (bufptr == 16) return;
-	if (bufptr == 0 ) vm.pic.doirq (vm.config.mouse.irq);
+	if (bufptr == 0 ) vm.pic.doirq (vm.config->mouse.irq);
 	buf[bufptr++] = value;
 }
 
@@ -69,7 +69,7 @@ bool SerialMouse::portReadHandler(uint16_t portnum, uint8_t& outValue)
 			if (bufptr < 0) 
 				bufptr = 0;
 			if (bufptr > 0) 
-				vm.pic.doirq (vm.config.mouse.irq);
+				vm.pic.doirq (vm.config->mouse.irq);
 			reg[4] = ~reg[4] & 1;
 			return true;
 		case 5: //line status register (read-only)
@@ -105,7 +105,7 @@ SerialMouse::SerialMouse(VM& inVM)
 
 void SerialMouse::init()
 {
-	uint16_t basePort = vm.config.mouse.port;
+	uint16_t basePort = vm.config->mouse.port;
 	vm.ports.setPortRedirector(basePort, basePort + 7, this);
 }
 

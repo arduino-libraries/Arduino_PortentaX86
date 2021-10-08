@@ -29,5 +29,6 @@ namespace Faux86
 		void* memmove(void *dst, const void *src, size_t len);
 		void* memcpy(void *dst, const void *src, size_t len);
 		void* memset(void *ptr, int ch, size_t len);
+    //void* operator new  ( std::size_t count );
 	}
 }

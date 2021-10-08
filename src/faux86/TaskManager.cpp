@@ -33,7 +33,7 @@ TaskManager::TaskManager(VM& inVM) : vm(inVM)
 
 void TaskManager::tick()
 {
-	if (vm.config.singleThreaded) 
+	if (vm.config->singleThreaded) 
 	{
 		for (int n = 0; n < numTasks; n++)
 		{
@@ -79,13 +79,13 @@ void TaskManager::addTask(Task* newTask)
 {
 	if (numTasks < maxTasks)
 	{
-		tasks[numTasks].timer = &vm.config.hostSystemInterface->getTimer();
+		tasks[numTasks].timer = &vm.config->hostSystemInterface->getTimer();
 		tasks[numTasks].task = newTask;
 		tasks[numTasks].nextTickTime = 0;
 		tasks[numTasks].running = true;
 
 #ifdef _WIN32
-		if (!vm.config.singleThreaded)
+		if (!vm.config->singleThreaded)
 		{
 			tasks[numTasks].thread = _beginthread(TaskManager::updateTaskThreaded, 0, (void*)&tasks[numTasks]);
 		}

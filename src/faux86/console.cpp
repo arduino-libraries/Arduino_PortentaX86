@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "cpu.h"
+#include "CPU.h"
 #include "DriveManager.h"
 
 #ifdef _WIN32

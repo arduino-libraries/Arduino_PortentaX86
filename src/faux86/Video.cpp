@@ -257,17 +257,22 @@ void Video::handleInterrupt()
 		}
 }
 
+#include "ea_malloc.h"
+
+
 Video::Video(VM& inVM)
 	: vm(inVM)
 {
-	if (vm.config.asciiFile && vm.config.asciiFile->isValid())
+	VRAM = (uint8_t*)ea_malloc(VRAMSize);
+	if (vm.config->asciiFile && vm.config->asciiFile->isValid())
 	{
 		fontcga = new uint8_t[FontSize];
-		vm.config.asciiFile->read(fontcga, FontSize);
+		vm.config->asciiFile->read(fontcga, FontSize);
 	}
 	else
 	{
 		// Error!
+		log(Log, "no font file!!!");
 	}
 
 	MemUtils::memset(VGA_ATTR, 0, sizeof(uint16_t) * 0x100);

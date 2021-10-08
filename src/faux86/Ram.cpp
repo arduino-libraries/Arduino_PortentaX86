@@ -22,28 +22,28 @@
 #include "Ram.h"
 #include "VM.h"
 #include "Debugger.h"
+#include "ea_malloc.h"
 
 using namespace Faux86;
 
 Memory::Memory(VM& inVM) :
 	vm(inVM)
 {
-	RAM = new uint8_t[vm.config.ramSize];
-	readonly = new uint8_t[vm.config.ramSize];
-
-	reset();
 }
 
 void Memory::reset()
 {
-	memset(RAM, 0, vm.config.ramSize);
-	memset(readonly, 0, vm.config.ramSize);
+	RAM = (uint8_t*)ea_malloc(vm.config->ramSize);
+	readonly = (uint8_t*)ea_malloc(vm.config->ramSize);
+
+	memset(RAM, 0, vm.config->ramSize);
+	memset(readonly, 0, vm.config->ramSize);
 }
 
 Memory::~Memory()
 {
-	delete[] RAM;
-	delete[] readonly;
+	ea_free(RAM);
+	ea_free(readonly);
 }
 
 void Memory::writeByte(uint32_t addr32, uint8_t value) 

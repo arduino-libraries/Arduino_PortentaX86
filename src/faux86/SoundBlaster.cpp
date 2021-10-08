@@ -305,12 +305,12 @@ void SoundBlaster::init()
 	dspmaj = 2; //emulate a Sound Blaster 2.0
 	//dspmaj = 3; //emulate a Sound Blaster Pro
 	dspmin = 0;
-	sbirq = vm.config.blaster.irq;
+	sbirq = vm.config->blaster.irq;
 	sbdma = 1;
 
 	//mixer.reg[0x22] = mixer.reg[0x26] = mixer.reg[0x04] = (4 << 5) | (4 << 1);
 	mixer[0x22] = mixer[0x26] = mixer[0x04] = (4 << 5) | (4 << 1);
 
-	uint16_t baseport = vm.config.blaster.port;
+	uint16_t baseport = vm.config->blaster.port;
 	vm.ports.setPortRedirector(baseport, baseport + 0xE, this);
 }

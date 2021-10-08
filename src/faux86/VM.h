@@ -22,7 +22,7 @@
 
 #include "Config.h"
 #include "CPU.h"
-#include "RAM.h"
+#include "Ram.h"
 #include "PIT.h"
 #include "Ports.h"
 #include "PIC.h"
@@ -47,13 +47,13 @@ namespace Faux86
 	class VM
 	{
 	public:
-		VM(Config& inConfig);
+		VM(Config* inConfig);
 		~VM();
 
 		bool init();
 		bool simulate();
 
-		Config config;
+		Config* config;
 
 		CPU cpu;
 		Memory memory;

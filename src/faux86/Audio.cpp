@@ -72,7 +72,7 @@ void Audio::tick()
 	int16_t sample;
 	if (audbufptr >= usebuffersize) return;
 	sample = vm.adlib.generateSample() >> 8;
-	if (vm.config.useDisneySoundSource) sample += vm.soundSource.generateSample();
+	if (vm.config->useDisneySoundSource) sample += vm.soundSource.generateSample();
 	sample += vm.blaster.generateSample();
 	if (vm.pcSpeaker.enabled) sample += (vm.pcSpeaker.generateSample() >> 1);
 	if (audbufptr < (int) sizeof(audbuf) ) audbuf[audbufptr++] = (uint8_t) ((uint16_t) sample+128);
@@ -95,8 +95,8 @@ Audio::Audio(VM& inVM)
 
 void Audio::init()
 {
-	sampleRate = vm.config.audio.sampleRate;
-	latency = vm.config.audio.latency;
+	sampleRate = vm.config->audio.sampleRate;
+	latency = vm.config->audio.latency;
 	log(Log, "Initializing audio stream... ");
 
 	audbufptr = usebuffersize = (sampleRate / 1000) * latency;
@@ -106,12 +106,12 @@ void Audio::init()
 	MemUtils::memset (audbuf, 128, sizeof (audbuf) );
 	audbufptr = usebuffersize;
 
-	vm.config.hostSystemInterface->getAudio().init(vm);
+	vm.config->hostSystemInterface->getAudio().init(vm);
 }
 
 Audio::~Audio() 
 {
-	vm.config.hostSystemInterface->getAudio().shutdown();
+	vm.config->hostSystemInterface->getAudio().shutdown();
 	// TODO
 	/*
 	SDL_PauseAudio (1);

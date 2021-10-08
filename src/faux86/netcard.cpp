@@ -31,8 +31,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include "cpu.h"
-#include "ram.h"
+#include "CPU.h"
+#include "Ram.h"
 #include "packet.h"
 
 struct netstruct {

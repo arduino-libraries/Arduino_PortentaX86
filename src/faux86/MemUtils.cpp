@@ -19,8 +19,15 @@
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "MemUtils.h"
+//#include "SDRAM.h"
 
 using namespace Faux86;
+
+/*
+void* MemUtils::operator new (std::size_t count) {
+    return ea_malloc(count);
+}
+*/
 
 void* MemUtils::memmove(void *dst, const void *src, size_t len)
 {

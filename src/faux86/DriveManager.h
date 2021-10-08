@@ -46,6 +46,9 @@ namespace Faux86
 		EmbeddedDisk(uint8_t* inData, uint64_t inLength) :
 			data(inData), length(inLength), position(0) {}
 
+		EmbeddedDisk(const uint8_t* inData, uint64_t inLength) :
+			data((uint8_t*)inData), length(inLength), position(0) {}
+
 		virtual int read(uint8_t *buffer, unsigned count) override;
 		virtual int write(const uint8_t *buffer, unsigned count) override;
 

@@ -175,6 +175,7 @@ CircleHostInterface::CircleHostInterface(CDeviceNameService& deviceNameService, 
 {
 	instance = this;
 	
+	/*
 	keyboard = (CUSBKeyboardDevice *) deviceNameService.GetDevice ("ukbd1", FALSE);
 	
 	if(keyboard)
@@ -188,6 +189,7 @@ CircleHostInterface::CircleHostInterface(CDeviceNameService& deviceNameService, 
 	{
 		mouse->RegisterStatusHandler(mouseStatusHandler);
 	}
+	*/
 }
 
 void CircleHostInterface::tick(VM& vm)

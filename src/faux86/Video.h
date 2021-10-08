@@ -71,7 +71,7 @@ namespace Faux86
 		uint32_t usefullscreen;
 		
 		static constexpr int VRAMSize = 0x40000;
-		uint8_t VRAM[VRAMSize];
+		uint8_t* VRAM;
 
 		uint8_t cgabg, blankattr, vidgfxmode, vidcolor;
 		uint16_t cols = 80; 

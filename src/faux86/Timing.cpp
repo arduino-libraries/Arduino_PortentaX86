@@ -38,7 +38,7 @@ void TimingScheduler::init()
 	scanlinetiming = getHostFreq() / 31500;
 	ssourceticks = getHostFreq() / 8000;
 	adlibticks = getHostFreq() / 48000;
-	if (vm.config.enableAudio) sampleticks = getHostFreq() / gensamplerate;
+	if (vm.config->enableAudio) sampleticks = getHostFreq() / gensamplerate;
 	else sampleticks = -1;
 	i8253tickgap = getHostFreq() / 119318;
 }
@@ -89,7 +89,7 @@ void TimingScheduler::tick()
 
 	if (curtick >= (lastsampletick + sampleticks) ) {
 			vm.audio.tick();
-			if (vm.config.slowSystem) {
+			if (vm.config->slowSystem) {
 					vm.audio.tick();
 					vm.audio.tick();
 					vm.audio.tick();
@@ -105,12 +105,12 @@ void TimingScheduler::tick()
 
 uint64_t TimingScheduler::getTicks()
 {
-	return vm.config.hostSystemInterface->getTimer().getTicks();
+	return vm.config->hostSystemInterface->getTimer().getTicks();
 }
 
 uint64_t TimingScheduler::getHostFreq()
 {
-	return vm.config.hostSystemInterface->getTimer().getHostFreq();
+	return vm.config->hostSystemInterface->getTimer().getHostFreq();
 }
 
 uint64_t TimingScheduler::getElapsed(uint64_t prevTick)

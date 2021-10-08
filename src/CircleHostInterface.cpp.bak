@@ -1,0 +1,432 @@
+/*
+  Faux86: A portable, open-source 8086 PC emulator.
+  Copyright (C)2018 James Howard
+  Based on Fake86
+  Copyright (C)2010-2013 Mike Chambers
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+#include "CircleHostInterface.h"
+#include "Keymap.h" 
+#include "faux86/VM.h"
+#include "kernel.h"
+#include "FatFsDisk.h"
+
+using namespace Faux86;
+
+CircleHostInterface* CircleHostInterface::instance;
+
+#include "Arduino.h"
+#include "Portenta_Video.h"
+#include "SDRAM.h"
+
+DMA2D_HandleTypeDef DMA2D_Handle;
+uint32_t* DG_ScreenBuffer;
+
+uint32_t __ALIGNED(32) L8_CLUT[256];
+static DMA2D_CLUTCfgTypeDef clut;
+
+static void DMA2D_Init(uint16_t xsize, uint16_t ysize)
+{
+
+	if (xsize == 0) {
+		xsize = stm32_getXSize();
+	}
+	if (ysize == 0) {
+		ysize = stm32_getYSize();
+	}
+
+  /*##-1- Configure the DMA2D Mode, Color Mode and output offset #############*/
+  DMA2D_Handle.Init.Mode         = DMA2D_M2M_PFC;
+  DMA2D_Handle.Init.ColorMode    = DMA2D_OUTPUT_RGB565;
+  DMA2D_Handle.Init.OutputOffset = stm32_getXSize() - xsize;
+  DMA2D_Handle.Init.AlphaInverted = DMA2D_REGULAR_ALPHA;  /* No Output Alpha Inversion*/
+  DMA2D_Handle.Init.RedBlueSwap   = DMA2D_RB_REGULAR;     /* No Output Red & Blue swap */
+
+  /*##-2- DMA2D Callbacks Configuration ######################################*/
+  DMA2D_Handle.XferCpltCallback  = NULL;
+
+  /*##-3- Foreground Configuration ###########################################*/
+  DMA2D_Handle.LayerCfg[1].AlphaMode = DMA2D_REPLACE_ALPHA; //DMA2D_NO_MODIF_ALPHA;
+  DMA2D_Handle.LayerCfg[1].InputAlpha = 0x00;
+  DMA2D_Handle.LayerCfg[1].InputColorMode = DMA2D_INPUT_L8; //DMA2D_OUTPUT_RGB565;
+  //DMA2D_Handle.LayerCfg[1].ChromaSubSampling = cssMode;
+  DMA2D_Handle.LayerCfg[1].InputOffset = 0; //LCD_Y_Size - ysize;
+  DMA2D_Handle.LayerCfg[1].RedBlueSwap = DMA2D_RB_REGULAR; /* No ForeGround Red/Blue swap */
+  DMA2D_Handle.LayerCfg[1].AlphaInverted = DMA2D_REGULAR_ALPHA; /* No ForeGround Alpha inversion */
+
+  DMA2D_Handle.Instance          = DMA2D;
+
+  /*##-4- DMA2D Initialization     ###########################################*/
+  HAL_DMA2D_Init(&DMA2D_Handle);
+  HAL_DMA2D_ConfigLayer(&DMA2D_Handle, 1);
+
+  //memcpy(L8_CLUT, colors, 256 * 4);
+  clut.pCLUT = (uint32_t *)L8_CLUT; //(uint32_t *)colors;
+  clut.CLUTColorMode = DMA2D_CCM_ARGB8888;
+  clut.Size = 0xFF;
+
+#ifdef CORE_CM7
+  SCB_CleanInvalidateDCache();
+  SCB_InvalidateICache();
+  //SCB_InvalidateDCache_by_Addr(clut.pCLUT, clut.Size);
+#endif
+
+  HAL_DMA2D_CLUTLoad(&DMA2D_Handle, clut, 1);
+  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);
+}
+
+//#define DEBUG_CM7_VIDEO
+
+static void DMA2D_CopyBuffer(uint32_t *pSrc, uint32_t *pDst)
+{
+  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);  /* wait for the previous DMA2D transfer to ends */
+  /* copy the new decoded frame to the LCD Frame buffer*/
+  HAL_DMA2D_Start(&DMA2D_Handle, (uint32_t)pSrc, (uint32_t)pDst, stm32_getXSize(), stm32_getYSize());
+#if defined(CORE_CM7) && !defined(DEBUG_CM7_VIDEO) 
+  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);  /* wait for the previous DMA2D transfer to ends */
+#endif
+}
+
+void DG_DrawFrame()
+{
+  uint32_t fb = getNextFrameBuffer();
+#ifdef CORE_CM7
+  //SCB_CleanInvalidateDCache();
+  //SCB_InvalidateICache();
+  SCB_InvalidateDCache_by_Addr((uint32_t *)fb, stm32_getXSize() * stm32_getYSize() * 4);
+#endif
+
+  DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
+}
+
+
+#include <stdarg.h>
+
+void Faux86::log(Faux86::LogChannel channel, const char* message, ...)
+{
+#if (USE_SERIAL_LOGGING || FAKE_FRAMEBUFFER)
+	va_list myargs;
+	va_start(myargs, message);
+	
+	//if(channel == Faux86::LogChannel::LogRaw)
+	//{
+	//	CString Message;
+	//	Message.Format (message, myargs);
+	//	CLogger::Get()->GetTarget()->Write ((const char *) Message, Message.GetLength ());
+	//}
+	//else
+	{
+		CLogger::Get()->WriteV("Faux86", LogNotice, message, myargs);
+	}
+	va_end(myargs);
+#endif
+
+  char buffer[256];
+  va_list args;
+  va_start (args, message);
+  vsnprintf (buffer,256, message, args);
+  if (channel == Faux86::LogChannel::LogRaw) {
+  	printf("%s", buffer);
+  	if (buffer[0] == '\r') {
+  		printf("\n");
+  	}
+  	fflush(stdout);
+  } else {
+  	printf("%s\n", buffer);  	
+  }
+  va_end (args);
+}
+
+void CircleFrameBufferInterface::init(uint32_t desiredWidth, uint32_t desiredHeight)
+{	
+	DG_ScreenBuffer = (uint32_t*)ea_malloc(desiredWidth * desiredHeight * 4);
+
+	surface = new RenderSurface();
+	surface->width = desiredWidth;
+	surface->height = desiredHeight;
+	surface->pitch = 0;
+	surface->pixels = (uint8_t*)DG_ScreenBuffer;
+
+	DMA2D_Init(desiredWidth, desiredHeight);
+}
+
+void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredHeight)
+{
+	if(surface->width == desiredWidth && surface->height == desiredHeight)
+		return;
+
+	ea_free(DG_ScreenBuffer);
+
+	DG_ScreenBuffer = (uint32_t*)ea_malloc(desiredWidth * desiredHeight * 4);
+
+	surface = new RenderSurface();
+	surface->width = desiredWidth;
+	surface->height = desiredHeight;
+	surface->pitch = 0;
+	surface->pixels = (uint8_t*)DG_ScreenBuffer;
+
+	DMA2D_Init(desiredWidth, desiredHeight);
+}
+
+RenderSurface* CircleFrameBufferInterface::getSurface()
+{ 
+	return surface;
+}
+
+void CircleFrameBufferInterface::setPalette(Palette* palette)
+{
+	for(int n = 0; n < 256; n++)
+	{
+		uint32_t colour = (0xff << 24) | (palette->colours[n].r) | (palette->colours[n].g << 8) | (palette->colours[n].b << 16);
+		L8_CLUT[n] = colour;
+	}
+	DMA2D_Init(getSurface()->width, getSurface()->height);
+}
+
+void CircleAudioInterface::init(VM& vm)
+{
+	//pwmSound = new PWMSound(vm.audio, &interruptSystem, vm.audio.sampleRate);
+	//pwmSound->Start();
+}
+
+void CircleAudioInterface::shutdown()
+{
+}
+
+CircleTimerInterface::CircleTimerInterface()
+{
+	lastTimerSample = millis();
+}
+
+uint64_t CircleTimerInterface::getHostFreq()
+{
+	return 1000;
+}
+
+uint64_t CircleTimerInterface::getTicks()
+{
+	uint32_t timerSample = millis();
+	uint32_t delta = timerSample >= lastTimerSample ? (timerSample - lastTimerSample) : (0xffffffff - lastTimerSample) + timerSample;
+	lastTimerSample = timerSample;
+	currentTick += delta;
+	return currentTick;
+}
+
+DiskInterface* CircleHostInterface::openFile(const char* filename)
+{
+	return FatFsDisk::open(filename);
+} 
+
+CircleHostInterface::CircleHostInterface()
+{
+	instance = this;
+	
+	/*
+	keyboard = (CUSBKeyboardDevice *) deviceNameService.GetDevice ("ukbd1", FALSE);
+	
+	if(keyboard)
+	{
+		keyboard->RegisterKeyStatusHandlerRaw (keyStatusHandlerRaw);
+	}
+	
+	CMouseDevice* mouse = (CMouseDevice *) deviceNameService.GetDevice ("mouse1", FALSE);
+	
+	if(mouse)
+	{
+		mouse->RegisterStatusHandler(mouseStatusHandler);
+	}
+	*/
+}
+
+void CircleHostInterface::tick(VM& vm)
+{
+	while(inputBufferSize > 0)
+	{
+		InputEvent& event = inputBuffer[inputBufferPos];
+		
+		switch(event.eventType)
+		{
+			case EventType::KeyPress:
+			{
+				vm.input.handleKeyDown(event.scancode);
+			}
+			break;
+			case EventType::KeyRelease:
+			{
+				vm.input.handleKeyUp(event.scancode);
+			}
+			break;
+			case EventType::MousePress:
+			{
+				vm.mouse.handleButtonDown(event.mouseButton);
+			}
+			break;
+			case EventType::MouseRelease:
+			{
+				vm.mouse.handleButtonUp(event.mouseButton);
+			}
+			break;
+			case EventType::MouseMove:
+			{
+				vm.mouse.handleMove(event.mouseMotionX, event.mouseMotionY);
+			}
+			break;
+		}
+		
+		inputBufferPos++;
+		inputBufferSize --;
+		if(inputBufferPos >= MaxInputBufferSize)
+		{
+			inputBufferPos = 0;
+		}
+	}
+}
+
+void CircleHostInterface::queueEvent(InputEvent& inEvent)
+{
+	if(inputBufferSize < MaxInputBufferSize)
+	{
+		int writePos = (inputBufferPos + inputBufferSize) % MaxInputBufferSize;
+		inputBuffer[writePos] = inEvent;
+		instance->inputBufferSize ++;
+	}
+}
+
+void CircleHostInterface::queueEvent(EventType eventType, u16 scancode)
+{
+	if(scancode != 0)
+	{
+		InputEvent newEvent;
+		newEvent.eventType = eventType;
+		newEvent.scancode = scancode;
+		queueEvent(newEvent);
+	}
+}
+
+void CircleHostInterface::mouseStatusHandler (unsigned nButtons, int nDisplacementX, int nDisplacementY)
+{
+	InputEvent newEvent;
+
+#if 0
+	// Mouse presses
+	if((nButtons & MOUSE_BUTTON_LEFT) && !(instance->lastMouseButtons & MOUSE_BUTTON_LEFT))
+	{
+		newEvent.eventType = EventType::MousePress;
+		newEvent.mouseButton = SerialMouse::ButtonType::Left;
+		instance->queueEvent(newEvent);
+	}
+	if((nButtons & MOUSE_BUTTON_RIGHT) && !(instance->lastMouseButtons & MOUSE_BUTTON_RIGHT))
+	{
+		newEvent.eventType = EventType::MousePress;
+		newEvent.mouseButton = SerialMouse::ButtonType::Right;
+		instance->queueEvent(newEvent);
+	}
+	
+	// Mouse releases
+	if(!(nButtons & MOUSE_BUTTON_LEFT) && (instance->lastMouseButtons & MOUSE_BUTTON_LEFT))
+	{
+		newEvent.eventType = EventType::MouseRelease;
+		newEvent.mouseButton = SerialMouse::ButtonType::Left;
+		instance->queueEvent(newEvent);
+	}
+	if(!(nButtons & MOUSE_BUTTON_RIGHT) && (instance->lastMouseButtons & MOUSE_BUTTON_RIGHT))
+	{
+		newEvent.eventType = EventType::MouseRelease;
+		newEvent.mouseButton = SerialMouse::ButtonType::Right;
+		instance->queueEvent(newEvent);
+	}
+#endif
+
+	// Motion events	
+	if(nDisplacementX != 0 || nDisplacementY != 0)
+	{
+		newEvent.eventType = EventType::MouseMove;
+		newEvent.mouseMotionX = (int8_t) nDisplacementX;
+		newEvent.mouseMotionY = (int8_t) nDisplacementY;
+		instance->queueEvent(newEvent);
+	}
+	
+	instance->lastMouseButtons = nButtons;
+}
+
+void CircleHostInterface::keyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6])
+{
+	for(int n = 0; n < 8; n++)
+	{
+		int mask = 1 << n;
+		bool wasPressed = (instance->lastModifiers & mask) != 0;
+		bool isPressed = (ucModifiers & mask) != 0;
+		if(!wasPressed && isPressed)
+		{
+			instance->queueEvent(EventType::KeyPress, modifier2xtMapping[n]);
+		}
+		else if(wasPressed && !isPressed)
+		{
+			instance->queueEvent(EventType::KeyRelease, modifier2xtMapping[n]);
+		}
+	}
+		
+	for(int n = 0; n < 6; n++)
+	{
+		if(instance->lastRawKeys[n] != 0)
+		{
+			bool inNewBuffer = false;
+			
+			for(int i = 0; i < 6; i++)
+			{
+				if(instance->lastRawKeys[n] == RawKeys[i])
+				{
+					inNewBuffer = true;
+					break;
+				}
+			}
+			
+			if(!inNewBuffer && instance->inputBufferSize < MaxInputBufferSize)
+			{
+				instance->queueEvent(EventType::KeyRelease, usb2xtMapping[instance->lastRawKeys[n]]);
+			}
+		}
+	}
+
+	for(int n = 0; n < 6; n++)
+	{
+		if(RawKeys[n] != 0)
+		{
+			bool inLastBuffer = false;
+			
+			for(int i = 0; i < 6; i++)
+			{
+				if(instance->lastRawKeys[i] == RawKeys[n])
+				{
+					inLastBuffer = true;
+					break;
+				}
+			}
+			
+			if(!inLastBuffer && instance->inputBufferSize < MaxInputBufferSize)
+			{
+				instance->queueEvent(EventType::KeyPress, usb2xtMapping[RawKeys[n]]);
+			}
+		}
+	}
+
+	for(int n = 0; n < 6; n++)
+	{
+		instance->lastRawKeys[n] = RawKeys[n];
+	}
+
+	instance->lastModifiers = ucModifiers;
+}

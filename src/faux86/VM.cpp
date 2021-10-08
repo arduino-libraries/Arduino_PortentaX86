@@ -68,13 +68,13 @@ public:
 
 		//log(LogVerbose, ".");
 
-		if (!vm.config.speed)
+		if (!vm.config->speed)
 		{
 			vm.cpu.exec86(10000);
 		}
 		else 
 		{
-			vm.cpu.exec86(vm.config.speed / 100);
+			vm.cpu.exec86(vm.config->speed / 100);
 			while (!vm.audio.isAudioBufferFilled()) 
 			{
 				vm.timing.tick();
@@ -93,7 +93,7 @@ void runconsole (void *dummy);
 void *runconsole (void *dummy);
 #endif
 
-VM::VM(Config& inConfig)
+VM::VM(Config* inConfig)
 	: config(inConfig)
 	, cpu(*this)
 	, memory(*this)
@@ -123,7 +123,7 @@ bool VM::init()
 	log(Log, "Based on Fake86 (c)2010-2013 Mike Chambers");
 	log(Log, "[A portable, open-source 8086 PC emulator]");
 
-	if (config.enableDebugger)
+	if (config->enableDebugger)
 	{
 		debugger = new Debugger(*this);
 	}
@@ -136,37 +136,39 @@ bool VM::init()
 	blaster.init();
 	dma.init();
 
+	memory.reset();
+
 	mouse.init();
 
 	timing.init();
 
-	if (!config.biosFile || !config.biosFile->isValid())
+	if (!config->biosFile || !config->biosFile->isValid())
 	{
 		log(LogFatal, "Could not load BIOS file!");
 		return false;
 	}
 
-	if (!config.asciiFile || !config.asciiFile->isValid())
+	if (!config->asciiFile || !config->asciiFile->isValid())
 	{
 		log(LogFatal, "Could not load ASCII file!");
 		return false;
 	}
 
-	uint32_t biosSize = (uint32_t) config.biosFile->getSize();
-	memory.loadBinary((uint32_t)(DEFAULT_RAM_SIZE - biosSize), config.biosFile, 1, MemArea_BIOS);
+	uint32_t biosSize = (uint32_t) config->biosFile->getSize();
+	memory.loadBinary((uint32_t)(DEFAULT_RAM_SIZE - biosSize), config->biosFile, 1, MemArea_BIOS);
 
-	//memory.loadBinary(0xA0000UL, config.asciiFile, 1);
+	//memory.loadBinary(0xA0000UL, config->asciiFile, 1);
 
 #ifdef DISK_CONTROLLER_ATA
-	if (!memory.loadBinary(0xD0000UL, config.ideControllerFile, 1))
+	if (!memory.loadBinary(0xD0000UL, config->ideControllerFile, 1))
 	{
 		return false;
 	}
 #endif
 	if (biosSize <= 8192) 
 	{
-		memory.loadBinary(0xF6000UL, config.romBasicFile, 0);
-		if (!memory.loadBinary(0xC0000UL, config.videoRomFile, 1, MemArea_VGABIOS))
+		memory.loadBinary(0xF6000UL, config->romBasicFile, 0);
+		if (!memory.loadBinary(0xC0000UL, config->videoRomFile, 1, MemArea_VGABIOS))
 		{
 			log(LogFatal, "Could not load video rom file!");
 			return false;
@@ -181,19 +183,19 @@ bool VM::init()
 		//debugger->addDataBreakpoint(0x487);
 	}
 
-	drives.insertDisk(DRIVE_A, config.diskDriveA);
-	drives.insertDisk(DRIVE_B, config.diskDriveB);
-	drives.insertDisk(DRIVE_C, config.diskDriveC);
-	drives.insertDisk(DRIVE_D, config.diskDriveD);
+	drives.insertDisk(DRIVE_A, config->diskDriveA);
+	drives.insertDisk(DRIVE_B, config->diskDriveB);
+	drives.insertDisk(DRIVE_C, config->diskDriveC);
+	drives.insertDisk(DRIVE_D, config->diskDriveD);
 
-	if (config.bootDrive == 254)
+	if (config->bootDrive == 254)
 	{
 		if (drives.isDiskInserted(DRIVE_C))
-			config.bootDrive = DRIVE_C;
+			config->bootDrive = DRIVE_C;
 		else if (drives.isDiskInserted(DRIVE_A))
-			config.bootDrive = DRIVE_A;
+			config->bootDrive = DRIVE_A;
 		else
-			config.bootDrive = 0xFF; //ROM BASIC fallback
+			config->bootDrive = 0xFF; //ROM BASIC fallback
 	}
 
 	log(Log, "\nInitializing CPU... ");

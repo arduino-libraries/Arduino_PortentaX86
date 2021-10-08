@@ -1270,10 +1270,10 @@ void CPU::intcall86 (uint8_t intnum)
 #ifdef BENCHMARK_BIOS
 				running = 0;
 #endif
-				if (vm.config.bootDrive < 255) 
+				if (vm.config->bootDrive < 255) 
 				{ 
 					//read first sector of boot drive into 07C0:0000 and execute it
-					regs.byteregs[regdl] = vm.config.bootDrive;
+					regs.byteregs[regdl] = vm.config->bootDrive;
 					vm.drives.readDisk ((DriveTarget)regs.byteregs[regdl], 0x07C0, 0x0000, 0, 1, 0, 1);
 					segregs[regcs] = 0x0000;
 					ip = 0x7C00;
@@ -3565,7 +3565,7 @@ void CPU::exec86 (uint32_t execloops)
 						intcall86 (6); /* trip invalid opcode exception (this occurs on the 80186+, 8086/8088 CPUs treat them as NOPs. */
 						               /* technically they aren't exactly like NOPs in most cases, but for our pursoses, that's accurate enough. */
 #endif
-						if (vm.config.verbose) {
+						if (vm.config->verbose) {
 								log (LogVerbose, "Illegal opcode: %02X %02X /%X @ %04X:%04X\n", getmem8(savecs, saveip), getmem8(savecs, saveip+1), (getmem8(savecs, saveip+2) >> 3) & 7, savecs, saveip);
 							}
 						break;
@@ -3582,5 +3582,4 @@ skipexecution:
 CPU::CPU(VM& inVM)
 	: vm(inVM)
 {
-
 }

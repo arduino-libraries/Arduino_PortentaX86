@@ -107,7 +107,7 @@ void DisneySoundSource::init()
 {
 	MemUtils::memset(ssourcebuf, 0, bufferLength);
 
-	if (vm.config.useDisneySoundSource)
+	if (vm.config->useDisneySoundSource)
 	{
 		vm.ports.setPortRedirector(0x378, 0x378, this);
 		vm.ports.setPortRedirector(0x37A, 0x37A, this);
