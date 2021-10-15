@@ -25,6 +25,7 @@
 #include "FatFsDisk.h"
 #include "SDRAM.h"
 #include <new>
+#include "RPC_internal.h"
 
 // Embedded disks / ROMS
 #if USE_EMBEDDED_BOOT_FLOPPY
@@ -58,6 +59,15 @@ CKernel::~CKernel (void)
 {
 }
 
+static Faux86::VM* _vm = NULL;
+void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
+	if (_vm) {
+		printf("received %x %x %x\n", k1, k2, k3);
+		_vm->input.handleKeyDown(k3);
+		_vm->input.handleKeyUp(k3);
+	}
+}
+
 void DG_Init();
 
 bool CKernel::Initialize ()
@@ -67,6 +77,9 @@ bool CKernel::Initialize ()
 	// Video begin
 	// USBHOST begin
 	DG_Init();
+
+	RPC1.begin();
+  RPC1.bind("on_key", on_key);
 
 	wifi_data_fs.mount(&wifi_data);
 	ota_data_fs.mount(&ota_data);
@@ -118,6 +131,7 @@ bool CKernel::Initialize ()
 		log(Log, "Init VM\n");
 		
 		bOK = vm->init();
+		_vm = vm;
 	}
 	
 	return bOK;
