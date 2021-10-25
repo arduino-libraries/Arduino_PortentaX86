@@ -19,7 +19,6 @@
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "CircleHostInterface.h"
-#include "Keymap.h" 
 #include "faux86/VM.h"
 #include "kernel.h"
 #include "FatFsDisk.h"
@@ -424,6 +423,7 @@ void CircleHostInterface::mouseStatusHandler (unsigned nButtons, int nDisplaceme
 	instance->lastMouseButtons = nButtons;
 }
 
+/*
 void CircleHostInterface::keyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6])
 {
 	for(int n = 0; n < 8; n++)
@@ -492,3 +492,4 @@ void CircleHostInterface::keyStatusHandlerRaw (unsigned char ucModifiers, const 
 
 	instance->lastModifiers = ucModifiers;
 }
+*/

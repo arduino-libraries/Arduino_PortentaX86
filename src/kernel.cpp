@@ -26,6 +26,7 @@
 #include "SDRAM.h"
 #include <new>
 #include "RPC_internal.h"
+#include "Keymap.h"
 
 // Embedded disks / ROMS
 #if USE_EMBEDDED_BOOT_FLOPPY
@@ -60,11 +61,35 @@ CKernel::~CKernel (void)
 }
 
 static Faux86::VM* _vm = NULL;
+
+uint8_t keys[3] = {0, 0, 0};
+
 void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 	if (_vm) {
+		if (k1 != 0) {
+			_vm->input.handleKeyDown(modifier2xtMapping[k1]);
+		} else {
+			_vm->input.handleKeyUp(modifier2xtMapping[keys[0]]);			
+		}
+
+/*
+		if (k2 != 0) {
+			_vm->input.handleKeyDown(usb2xtMapping[k2]);
+		} else {
+			_vm->input.handleKeyUp(usb2xtMapping[keys[1]]);			
+		}
+*/
+
+		if (k3 != 0) {
+			_vm->input.handleKeyDown(usb2xtMapping[k3]);
+		} else {
+			_vm->input.handleKeyUp(usb2xtMapping[keys[2]]);			
+		}
+
 		printf("received %x %x %x\n", k1, k2, k3);
-		_vm->input.handleKeyDown(k3);
-		_vm->input.handleKeyUp(k3);
+		keys[0] = k1;
+		keys[1] = k2;
+		keys[2] = k3;
 	}
 }
 
