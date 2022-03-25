@@ -106,10 +106,10 @@ void DG_DrawFrame()
   SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
   SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
 #endif
-
   DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
 #ifdef CORE_CM7
   SCB_CleanInvalidateDCache();
+  //SCB_CleanInvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() * 4);
   //SCB_CleanDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
   //SCB_CleanDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
 #endif

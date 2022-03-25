@@ -155,7 +155,7 @@ bool VM::init()
 	}
 
 	uint32_t biosSize = (uint32_t) config->biosFile->getSize();
-	memory.loadBinary((uint32_t)(DEFAULT_RAM_SIZE - biosSize), config->biosFile, 1, MemArea_BIOS);
+	memory.loadBinary((uint32_t)(0x100000 - biosSize), config->biosFile, 1, MemArea_BIOS);
 
 	//memory.loadBinary(0xA0000UL, config->asciiFile, 1);
 

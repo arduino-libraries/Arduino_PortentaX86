@@ -25,7 +25,7 @@
 #include "FatFsDisk.h"
 #include "SDRAM.h"
 #include <new>
-#include "RPC_internal.h"
+#include "RPC.h"
 #include "Keymap.h"
 
 // Embedded disks / ROMS
@@ -63,6 +63,8 @@ CKernel::~CKernel (void)
 static Faux86::VM* _vm = NULL;
 
 uint8_t keys[3] = {0, 0, 0};
+
+rtos::Mutex btn_mtx;
 
 void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 	if (_vm) {
@@ -103,9 +105,6 @@ bool CKernel::Initialize ()
 	// USBHOST begin
 	DG_Init();
 
-	RPC1.begin();
-  RPC1.bind("on_key", on_key);
-
 	wifi_data_fs.mount(&wifi_data);
 	ota_data_fs.mount(&ota_data);
 
@@ -143,6 +142,16 @@ bool CKernel::Initialize ()
 			vmConfig->diskDriveA = dos;
 		}
 
+		if(!vmConfig->diskDriveB) {
+			auto bdrive = Faux86::FatFsDisk::open("/fs/disk1.img");
+			vmConfig->diskDriveB = bdrive;
+		}
+
+		if(!vmConfig->diskDriveC) {
+			auto cdrive = Faux86::FatFsDisk::open("/fs/disk2.img");
+			vmConfig->diskDriveC = cdrive;
+		}
+
 		vmConfig->diskDriveD = new CircleDeviceDisk(&ota_data);
 
 		// TODO
@@ -155,6 +164,10 @@ bool CKernel::Initialize ()
 
 		log(Log, "Init VM\n");
 		
+		RPC.begin();
+  	delay(100);
+  	RPC.bind("on_key", on_key);
+
 		bOK = vm->init();
 		_vm = vm;
 	}
