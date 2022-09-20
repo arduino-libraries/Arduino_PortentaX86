@@ -34,16 +34,18 @@ static void stdin_recvchar(char ch) {
   //RPC.call("on_key", ch);
 }
 
+bool need_to_send_key_up = false;
+
 static int process_key(tusbh_ep_info_t* ep, const uint8_t* keys)
 {
-/*
-  Serial1.print("M4: ");
-  Serial1.print(keys[0], HEX);
-  Serial1.print(" ");
-  Serial1.print(keys[1], HEX);
-  Serial1.print(" ");
-  Serial1.println(keys[2], HEX);
-*/
+  /*
+    Serial1.print("M4: ");
+    Serial1.print(keys[0], HEX);
+    Serial1.print(" ");
+    Serial1.print(keys[1], HEX);
+    Serial1.print(" ");
+    Serial1.println(keys[2], HEX);
+  */
   uint8_t modify = keys[0];
   uint8_t key = keys[2];
   uint8_t last_leds = key_leds;
@@ -80,6 +82,10 @@ static int process_key(tusbh_ep_info_t* ep, const uint8_t* keys)
   }
   if (keys[0] != 0 || keys[1] != 0 || keys[2] != 0) {
     RPC.send("on_key", keys[0], keys[1], keys[2]);
+    need_to_send_key_up = true;
+  } else if (need_to_send_key_up) {
+    RPC.send("on_key", keys[0], keys[1], keys[2]);
+    need_to_send_key_up = false;
   }
   return 0;
 }
