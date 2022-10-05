@@ -163,10 +163,10 @@ bool CKernel::Initialize ()
 		vm = new (place) Faux86::VM(vmConfig);
 
 		log(Log, "Init VM\n");
-		
+
 		RPC.begin();
-  	delay(100);
-  	RPC.bind("on_key", on_key);
+		delay(100);
+		RPC.bind("on_key", on_key);
 
 		bOK = vm->init();
 		_vm = vm;

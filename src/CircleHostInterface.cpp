@@ -42,6 +42,11 @@ uint32_t fb;
 uint32_t __ALIGNED(32) L8_CLUT[256];
 static DMA2D_CLUTCfgTypeDef clut;
 
+volatile bool painting = false;
+void triggerPainting(DMA2D_HandleTypeDef* handle) {
+	painting = false;
+}
+
 static void DMA2D_Init(uint16_t xsize, uint16_t ysize)
 {
   /*##-1- Configure the DMA2D Mode, Color Mode and output offset #############*/
@@ -52,7 +57,7 @@ static void DMA2D_Init(uint16_t xsize, uint16_t ysize)
   DMA2D_Handle.Init.RedBlueSwap   = DMA2D_RB_REGULAR;     /* No Output Red & Blue swap */
 
   /*##-2- DMA2D Callbacks Configuration ######################################*/
-  DMA2D_Handle.XferCpltCallback  = NULL;
+  DMA2D_Handle.XferCpltCallback  = triggerPainting;
 
   /*##-3- Foreground Configuration ###########################################*/
   DMA2D_Handle.LayerCfg[1].AlphaMode = DMA2D_REPLACE_ALPHA; //DMA2D_NO_MODIF_ALPHA;
@@ -90,11 +95,11 @@ size_t _expected_height;
 
 static void DMA2D_CopyBuffer(uint32_t *pSrc, uint32_t *pDst)
 {
-  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);  /* wait for the previous DMA2D transfer to ends */
+  //HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);  /* wait for the previous DMA2D transfer to ends */
   /* copy the new decoded frame to the LCD Frame buffer*/
-  HAL_DMA2D_Start(&DMA2D_Handle, (uint32_t)pSrc, (uint32_t)pDst, 640, 480 /*_expected_width, _expected_height*/);
+  HAL_DMA2D_Start_IT(&DMA2D_Handle, (uint32_t)pSrc, (uint32_t)pDst, 640, 480 /*_expected_width, _expected_height*/);
 #if defined(CORE_CM7) && !defined(DEBUG_CM7_VIDEO) 
-  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);  /* wait for the previous DMA2D transfer to ends */
+  //HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);  /* wait for the previous DMA2D transfer to ends */
 #endif
 }
 
@@ -186,7 +191,7 @@ void Faux86::log(Faux86::LogChannel channel, const char* message, ...)
 void CircleFrameBufferInterface::init(uint32_t desiredWidth, uint32_t desiredHeight)
 {	
 	if (DG_ScreenBuffer == NULL) {
-		DG_ScreenBuffer = (uint8_t*)ea_malloc(stm32_getXSize() * stm32_getYSize());
+		DG_ScreenBuffer = (uint8_t*)malloc(stm32_getXSize() * stm32_getYSize());
 	}
 	memset(DG_ScreenBuffer, 0, stm32_getXSize() * stm32_getYSize());
 
@@ -215,9 +220,9 @@ void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredH
 	_expected_width = desiredWidth;
 	_expected_height = desiredHeight;
 
-	ea_free(DG_ScreenBuffer);
+	free(DG_ScreenBuffer);
 
-	DG_ScreenBuffer = (uint8_t*)ea_malloc(stm32_getXSize() * stm32_getYSize());
+	DG_ScreenBuffer = (uint8_t*)malloc(stm32_getXSize() * stm32_getYSize());
 	memset(DG_ScreenBuffer, 0, stm32_getXSize() * stm32_getYSize());
 
 	surface = new RenderSurface();
@@ -252,9 +257,16 @@ void CircleFrameBufferInterface::setPalette(Palette* palette)
 }
 
 
+extern "C" void DMA2D_IRQHandler() {
+	HAL_DMA2D_IRQHandler(&DMA2D_Handle);
+}
+
 int i = 0;
 void CircleFrameBufferInterface::present() {
-	DG_DrawFrame();
+	if (!painting) {
+		painting = true;
+		DG_DrawFrame();
+	}
 }
 
 void CircleAudioInterface::init(VM& vm)
