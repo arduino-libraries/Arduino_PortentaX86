@@ -130,12 +130,13 @@ void setup()
 {
   Serial1.begin(115200);
   RPC.begin();
+  delay(5000);
   usb.Init(USB_CORE_ID_HS, class_table);
   //usb.Init(USB_CORE_ID_FS, class_table);
 }
 
 void loop() {
-  //usb.Task();
+  usb.Task();
 }
 
 #endif
