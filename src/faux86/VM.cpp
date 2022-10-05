@@ -117,11 +117,15 @@ VM::VM(Config* inConfig)
 {
 }
 
-bool VM::init()
+bool VM::init(Config* inConfig)
 {
 	log(Log, "Faux86 (c)2018 James Howard");
 	log(Log, "Based on Fake86 (c)2010-2013 Mike Chambers");
 	log(Log, "[A portable, open-source 8086 PC emulator]");
+
+	if (inConfig != nullptr) {
+		config = inConfig;
+	}
 
 	if (config->enableDebugger)
 	{

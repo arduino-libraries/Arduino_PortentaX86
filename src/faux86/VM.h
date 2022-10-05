@@ -50,7 +50,7 @@ namespace Faux86
 		VM(Config* inConfig);
 		~VM();
 
-		bool init();
+		bool init(Config* inConfig = nullptr);
 		bool simulate();
 
 		Config* config;

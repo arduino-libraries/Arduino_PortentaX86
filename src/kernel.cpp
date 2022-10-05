@@ -168,7 +168,7 @@ bool CKernel::Initialize ()
 		delay(100);
 		RPC.bind("on_key", on_key);
 
-		bOK = vm->init();
+		bOK = vm->init(vmConfig);
 		_vm = vm;
 	}
 	
