@@ -108,10 +108,10 @@ void Renderer::refreshTextMode()
 void Renderer::createScaleMap()
 {
 	log(LogVerbose, "Creating scale map");
-	if (!scalemap)
-	{
-		scalemap = (uint32_t*)ea_malloc((hostSurface->width + 1) * hostSurface->height * sizeof(uint32_t));
+	if (scalemap) {
+		ea_free(scalemap);
 	}
+	scalemap = (uint32_t*)ea_malloc((hostSurface->width + 1) * hostSurface->height * sizeof(uint32_t));
 
 	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
 	double xscale, yscale;

@@ -96,6 +96,7 @@ void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 }
 
 void DG_Init();
+#include "usb_phy_api.h"
 
 bool CKernel::Initialize ()
 {
@@ -103,6 +104,9 @@ bool CKernel::Initialize ()
 
 	// Video begin
 	// USBHOST begin
+	get_usb_phy()->deinit();
+	NVIC_DisableIRQ(OTG_HS_IRQn);
+
 	DG_Init();
 
 	wifi_data_fs.mount(&wifi_data);
@@ -165,8 +169,8 @@ bool CKernel::Initialize ()
 		log(Log, "Init VM\n");
 
 		RPC.begin();
-		delay(100);
 		RPC.bind("on_key", on_key);
+		delay(100);
 
 		bOK = vm->init(vmConfig);
 		_vm = vm;

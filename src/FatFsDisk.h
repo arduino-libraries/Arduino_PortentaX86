@@ -36,7 +36,7 @@ namespace Faux86
 		{			
 			log(Log, "Attempting to open %s for read", path);
 
-			FILE* file = fopen(path, "rb");
+			FILE* file = fopen(path, "rwb");
 			if (file != NULL)
 			{
 				log(Log, "Success!");
