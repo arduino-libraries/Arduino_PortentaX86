@@ -95,6 +95,41 @@ void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 	}
 }
 
+uint8_t _prev_btn = 0;
+uint8_t _prev_x = 0;
+uint8_t _prev_y = 0;
+
+void on_mouse(uint8_t btn, int8_t x, int8_t y) {
+	if (_vm) {
+
+		printf("received %x %d %d\n", btn, x, y);
+
+		if (_prev_btn != btn) {
+			if (btn & 0x1) {
+				printf("left pressed\n");
+				_vm->mouse.handleButtonDown(SerialMouse::ButtonType::Left);
+			} else {
+				if (_prev_btn & 0x1) {
+					printf("left released\n");
+					_vm->mouse.handleButtonUp(SerialMouse::ButtonType::Left);
+				}
+			}
+			if (btn & 0x2) {
+				printf("right pressed\n");
+				_vm->mouse.handleButtonDown(SerialMouse::ButtonType::Right);
+			} else {
+				if (_prev_btn & 0x2) {
+					printf("right released\n");
+					_vm->mouse.handleButtonUp(SerialMouse::ButtonType::Right);
+				}
+			}
+		}
+
+		_prev_btn = btn;
+		_vm->mouse.handleMove(x, y);
+	}
+}
+
 void DG_Init();
 #include "usb_phy_api.h"
 
@@ -170,6 +205,7 @@ bool CKernel::Initialize ()
 
 		RPC.begin();
 		RPC.bind("on_key", on_key);
+		RPC.bind("on_mouse", on_mouse);
 		delay(100);
 
 		bOK = vm->init(vmConfig);
