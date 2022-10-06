@@ -79,7 +79,7 @@ void Renderer::init()
 	hostSurface = fb->getSurface();
 
 #ifdef DOUBLE_BUFFER
-	renderSurface = RenderSurface::create(720, 400);
+	renderSurface = RenderSurface::create(1024, 1024);
 #else
 	renderSurface = hostSurface;
 #endif

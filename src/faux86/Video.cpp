@@ -23,6 +23,7 @@
 #include "VM.h"
 #include "Video.h"
 #include "MemUtils.h"
+#include <stdio.h>
 
 using namespace Faux86;
 
@@ -627,13 +628,16 @@ bool Video::portWriteHandler(uint16_t portnum, uint8_t value)
 			switch (latchRGB) 
 			{
 				case 0: //red
+					printf("red: %x\n", value);
 					tempRGB.r = value << 2;
 					break;
 				case 1: //green
+					printf("green: %x\n", value);
 					tempRGB.g = value << 2;
 					break;
 				case 2: //blue
 					tempRGB.b = value << 2;
+					printf("paletteVGA.set %x %x %x\n", tempRGB.r, tempRGB.g, tempRGB.b);
 					paletteVGA.set(latchPal, tempRGB);
 					latchPal = latchPal + 1;
 					break;

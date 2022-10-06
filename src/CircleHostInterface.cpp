@@ -30,6 +30,7 @@ CircleHostInterface* CircleHostInterface::instance;
 #include "Arduino.h"
 #include "Portenta_Video.h"
 #include "SDRAM.h"
+#include "mbed.h"
 
 struct edid recognized_edid;
 uint32_t LCD_X_Size = 0, LCD_Y_Size = 0;
@@ -45,6 +46,20 @@ static DMA2D_CLUTCfgTypeDef clut;
 volatile bool painting = false;
 void triggerPainting(DMA2D_HandleTypeDef* handle) {
 	painting = false;
+}
+
+static void loadPalette() {
+  clut.pCLUT = (uint32_t *)L8_CLUT; //(uint32_t *)colors;
+  clut.CLUTColorMode = DMA2D_CCM_ARGB8888;
+  clut.Size = 0xFF;
+
+#ifdef CORE_CM7
+  SCB_CleanInvalidateDCache();
+  SCB_InvalidateICache();
+#endif
+
+  HAL_DMA2D_CLUTStartLoad(&DMA2D_Handle, &clut, 1);
+  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 1000);
 }
 
 static void DMA2D_Init(uint16_t xsize, uint16_t ysize)
@@ -74,18 +89,7 @@ static void DMA2D_Init(uint16_t xsize, uint16_t ysize)
   HAL_DMA2D_Init(&DMA2D_Handle);
   HAL_DMA2D_ConfigLayer(&DMA2D_Handle, 1);
 
-  //memcpy(L8_CLUT, colors, 256 * 4);
-  clut.pCLUT = (uint32_t *)L8_CLUT; //(uint32_t *)colors;
-  clut.CLUTColorMode = DMA2D_CCM_ARGB8888;
-  clut.Size = 0xFF;
-
-#ifdef CORE_CM7
-  SCB_CleanInvalidateDCache();
-  SCB_InvalidateICache();
-#endif
-
-  HAL_DMA2D_CLUTLoad(&DMA2D_Handle, clut, 1);
-  HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 100);
+  loadPalette();
 }
 
 //#define DEBUG_CM7_VIDEO
@@ -111,6 +115,7 @@ void DG_DrawFrame()
   SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
   SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
 #endif
+  delay(1);
   DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
 #ifdef CORE_CM7
   SCB_CleanInvalidateDCache();
@@ -143,9 +148,9 @@ void DG_Init()
 
   SDRAM.begin(getFramebufferEnd());
 
- 	fb = getNextFrameBuffer();
+  fb = getNextFrameBuffer();
 
-	//fb = getNextFrameBuffer();
+  //fb = getNextFrameBuffer();
 
   stm32_LCD_Clear(0xFFFFFF00);
   stm32_LCD_Clear(0xFFFFFF00);
@@ -195,7 +200,7 @@ void CircleFrameBufferInterface::init(uint32_t desiredWidth, uint32_t desiredHei
 	}
 	memset(DG_ScreenBuffer, 0, stm32_getXSize() * stm32_getYSize());
 
-	log(Log, "requesting size %d %d", desiredWidth, desiredHeight);
+	log(Log, "init: requesting size %d %d", desiredWidth, desiredHeight);
 	log(Log, "got size %d %d", stm32_getXSize(), stm32_getYSize());
 
 	_expected_width = desiredWidth;
@@ -214,7 +219,7 @@ void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredH
 	if(surface->width == desiredWidth && surface->height == desiredHeight)
 		return;
 
-	log(Log, "requesting size %d %d", desiredWidth, desiredHeight);
+	log(Log, "resize: requesting size %d %d", desiredWidth, desiredHeight);
 	log(Log, "got size %d %d", stm32_getXSize(), stm32_getYSize());
 
 	_expected_width = desiredWidth;
@@ -235,25 +240,38 @@ void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredH
 RenderSurface* CircleFrameBufferInterface::getSurface()
 { 
 	if (surface == nullptr) {
-		init(640, 400);
+		init(640, 480);
 	}
 	return surface;
 }
 
 static Palette* current_palette = NULL;
+Palette* _palette = NULL;
+
+void reallySetPalette() {
+
+	if (_palette == current_palette) {
+		return;
+	}
+	delay(5000);
+	current_palette = _palette;
+	//HAL_DMA2D_DeInit(&DMA2D_Handle);
+
+	for(int n = 0; n < 256; n++)
+	{
+		uint32_t colour = (0xff << 24) | (_palette->colours[n].r << 16) | (_palette->colours[n].g << 8) | (_palette->colours[n].b);
+		L8_CLUT[n] = colour;
+	}
+	//DMA2D_Init(getSurface()->width, getSurface()->height);
+	loadPalette();
+}
 
 void CircleFrameBufferInterface::setPalette(Palette* palette)
 {
-	if (palette == current_palette) {
-		return;
-	}
-	current_palette = palette;
-	for(int n = 0; n < 256; n++)
-	{
-		uint32_t colour = (0xff << 24) | (palette->colours[n].r << 16) | (palette->colours[n].g << 8) | (palette->colours[n].b);
-		L8_CLUT[n] = colour;
-	}
-	DMA2D_Init(getSurface()->width, getSurface()->height);
+	rtos::Thread t(osPriorityHigh);
+	_palette = palette;
+	t.start(reallySetPalette);
+	delay(10);
 }
 
 

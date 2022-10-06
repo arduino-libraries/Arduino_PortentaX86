@@ -198,6 +198,7 @@ bool CKernel::Initialize ()
 		
 		log(Log, "Creating VM\n");
 		void* place = ea_malloc(sizeof(Faux86::VM));
+		memset(place, 0, sizeof(Faux86::VM));
 
 		vm = new (place) Faux86::VM(vmConfig);
 
