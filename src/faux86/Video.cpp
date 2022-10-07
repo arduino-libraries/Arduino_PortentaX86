@@ -635,15 +635,11 @@ bool Video::portWriteHandler(uint16_t portnum, uint8_t value)
 					break;
 				case 2: //blue
 					tempRGB.b = value << 2;
-					printf("paletteVGA.set %d %x %x %x\n", latchPal, tempRGB.r, tempRGB.g, tempRGB.b);
 					paletteVGA.set(latchPal, tempRGB);
 					latchPal = latchPal + 1;
 					break;
 			}
-			if (latchPal == 15 || latchPal == 63 ||  latchPal == 127 || latchPal == 255) {
-				printf("setting forceupdatepalette\n");
-				forceupdatepalette = true;
-			}
+			forceupdatepalette = true;
 			latchRGB = (latchRGB + 1) % 3;
 			break;
 		case 0x3D5: //cursor position latch
