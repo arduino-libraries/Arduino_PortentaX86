@@ -68,10 +68,20 @@ rtos::Mutex btn_mtx;
 
 void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 	if (_vm) {
-		if (k1 != 0) {
-			_vm->input.handleKeyDown(modifier2xtMapping[k1]);
-		} else {
-			_vm->input.handleKeyUp(modifier2xtMapping[keys[0]]);			
+
+		for(int n = 0; n < 8; n++)
+		{
+			int mask = 1 << n;
+			bool wasPressed = (keys[0] & mask) != 0;
+			bool isPressed = (k1 & mask) != 0;
+			if(!wasPressed && isPressed)
+			{
+				_vm->input.handleKeyDown(modifier2xtMapping[n]);
+			}
+			else if(wasPressed && !isPressed)
+			{
+				_vm->input.handleKeyUp(modifier2xtMapping[n]);
+			}
 		}
 
 /*
