@@ -157,6 +157,12 @@ bool CKernel::Initialize ()
 	wifi_data_fs.mount(&wifi_data);
 	ota_data_fs.mount(&ota_data);
 
+	RPC.begin();
+	delay(100);
+
+	RPC.bind("on_key", on_key);
+	RPC.bind("on_mouse", on_mouse);
+
 	if(bOK)
 	{
 		HostInterface = new CircleHostInterface();
@@ -211,16 +217,10 @@ bool CKernel::Initialize ()
 		memset(place, 0, sizeof(Faux86::VM));
 
 		vm = new (place) Faux86::VM(vmConfig);
-
-		log(Log, "Init VM\n");
-
-		RPC.begin();
-		RPC.bind("on_key", on_key);
-		RPC.bind("on_mouse", on_mouse);
-		delay(100);
-
 		bOK = vm->init(vmConfig);
 		_vm = vm;
+
+		log(Log, "Init VM\n");
 	}
 	
 	return bOK;
