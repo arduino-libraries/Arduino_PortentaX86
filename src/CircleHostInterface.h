@@ -34,7 +34,10 @@ namespace Faux86
 		virtual void resize(uint32_t desiredWidth, uint32_t desiredHeight) override;
 		virtual void present() override;
 
-		virtual void setPalette(Palette* palette) override;
+		virtual void setPalette(Palette* palette) override {
+			setPalette(palette, false);
+		}
+		virtual void setPalette(Palette* palette, bool forced);
 
 	private:
 		uint16_t* frameBuffer = nullptr;

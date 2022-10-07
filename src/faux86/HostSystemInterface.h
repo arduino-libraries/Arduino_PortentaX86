@@ -49,6 +49,7 @@ namespace Faux86
 		virtual RenderSurface* getSurface() = 0;
 
 		virtual void setPalette(Palette* palette) = 0;
+		virtual void setPalette(Palette* palette, bool forced) = 0;
 
 		virtual void present() {}
 	};

@@ -69,6 +69,7 @@ namespace Faux86
 		uint8_t	vidmode;
 		uint8_t updatedscreen;
 		uint32_t usefullscreen;
+		bool forceupdatepalette = false;
 		
 		static constexpr int VRAMSize = 0x40000;
 		uint8_t* VRAM;

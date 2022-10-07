@@ -171,6 +171,12 @@ int RenderTask::update()
 		vm.video.updatedscreen = false;
 	}
 
+	if (vm.video.forceupdatepalette)
+	{
+		renderer.fb->setPalette(vm.video.getCurrentPalette(), true);
+		vm.video.forceupdatepalette = false;
+	}
+
 	constexpr int targetTime = 16;		// 16 ms
 	int delayTime = targetTime - (int)vm.timing.getElapsedMS(drawStartTime);
 

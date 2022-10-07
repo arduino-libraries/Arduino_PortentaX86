@@ -30,7 +30,6 @@ CircleHostInterface* CircleHostInterface::instance;
 #include "Arduino.h"
 #include "Portenta_Video.h"
 #include "SDRAM.h"
-#include "mbed.h"
 
 struct edid recognized_edid;
 uint32_t LCD_X_Size = 0, LCD_Y_Size = 0;
@@ -115,7 +114,7 @@ void DG_DrawFrame()
   SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
   SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
 #endif
-  delay(1);
+  printf("draw\n");
   DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
 #ifdef CORE_CM7
   SCB_CleanInvalidateDCache();
@@ -246,32 +245,45 @@ RenderSurface* CircleFrameBufferInterface::getSurface()
 }
 
 static Palette* current_palette = NULL;
-Palette* _palette = NULL;
+//static uint32_t _start_palette = 0;
 
-void reallySetPalette() {
-
-	if (_palette == current_palette) {
+void CircleFrameBufferInterface::setPalette(Palette* palette, bool forced)
+{
+/*	if (palette == current_palette) {
 		return;
+	} else {
+		if (_start_palette == 0)
+			{
+				printf("palette will load in 2000 ms\n");
+				_start_palette = millis();
+				return;
+			} else {
+				if (millis() - _start_palette < 2000) {
+					return;
+				}
+			}
 	}
-	delay(5000);
-	current_palette = _palette;
-	//HAL_DMA2D_DeInit(&DMA2D_Handle);
+*/
+	if (palette == current_palette && !forced) {
+			return;
+	}
+	while (painting) {
+		delay(1);
+	}
+	// now the frame should be over, let's lock refresh for a bit
+	painting = true;
+	printf("updating palette: %s\n" , forced ? "forced" : "unforced");
+	current_palette = palette;
+	HAL_DMA2D_DeInit(&DMA2D_Handle);
 
 	for(int n = 0; n < 256; n++)
 	{
-		uint32_t colour = (0xff << 24) | (_palette->colours[n].r << 16) | (_palette->colours[n].g << 8) | (_palette->colours[n].b);
+		uint32_t colour = (0xff << 24) | (palette->colours[n].r << 16) | (palette->colours[n].g << 8) | (palette->colours[n].b);
 		L8_CLUT[n] = colour;
 	}
-	//DMA2D_Init(getSurface()->width, getSurface()->height);
-	loadPalette();
-}
-
-void CircleFrameBufferInterface::setPalette(Palette* palette)
-{
-	rtos::Thread t(osPriorityHigh);
-	_palette = palette;
-	t.start(reallySetPalette);
-	delay(10);
+	DMA2D_Init(getSurface()->width, getSurface()->height);
+	painting = false;
+	//loadPalette();
 }
 
 
