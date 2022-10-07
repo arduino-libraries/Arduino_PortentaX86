@@ -114,7 +114,6 @@ void DG_DrawFrame()
   SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
   SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
 #endif
-  printf("draw\n");
   DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
 #ifdef CORE_CM7
   SCB_CleanInvalidateDCache();
@@ -131,7 +130,7 @@ void DG_Init()
 
   ret = anx7625_init(0);
   if(ret < 0) {
-    printf("Cannot continue, anx7625 init failed.\n");
+    //printf("Cannot continue, anx7625 init failed.\n");
     while(1);
   }
 
@@ -175,6 +174,8 @@ void Faux86::log(Faux86::LogChannel channel, const char* message, ...)
 	}
 	va_end(myargs);
 #endif
+
+  return;
 
   char buffer[256];
   va_list args;
@@ -272,7 +273,7 @@ void CircleFrameBufferInterface::setPalette(Palette* palette, bool forced)
 	}
 	// now the frame should be over, let's lock refresh for a bit
 	painting = true;
-	printf("updating palette: %s\n" , forced ? "forced" : "unforced");
+	//printf("updating palette: %s\n" , forced ? "forced" : "unforced");
 	current_palette = palette;
 	HAL_DMA2D_DeInit(&DMA2D_Handle);
 

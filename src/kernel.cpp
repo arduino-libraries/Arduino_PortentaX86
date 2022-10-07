@@ -88,7 +88,7 @@ void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 			_vm->input.handleKeyUp(usb2xtMapping[keys[2]]);			
 		}
 
-		printf("received %x %x %x\n", k1, k2, k3);
+		//printf("received %x %x %x\n", k1, k2, k3);
 		keys[0] = k1;
 		keys[1] = k2;
 		keys[2] = k3;
@@ -102,24 +102,24 @@ uint8_t _prev_y = 0;
 void on_mouse(uint8_t btn, int8_t x, int8_t y) {
 	if (_vm) {
 
-		printf("received %x %d %d\n", btn, x, y);
+		//printf("received %x %d %d\n", btn, x, y);
 
 		if (_prev_btn != btn) {
 			if (btn & 0x1) {
-				printf("left pressed\n");
+				//printf("left pressed\n");
 				_vm->mouse.handleButtonDown(SerialMouse::ButtonType::Left);
 			} else {
 				if (_prev_btn & 0x1) {
-					printf("left released\n");
+					//printf("left released\n");
 					_vm->mouse.handleButtonUp(SerialMouse::ButtonType::Left);
 				}
 			}
 			if (btn & 0x2) {
-				printf("right pressed\n");
+				//printf("right pressed\n");
 				_vm->mouse.handleButtonDown(SerialMouse::ButtonType::Right);
 			} else {
 				if (_prev_btn & 0x2) {
-					printf("right released\n");
+					//printf("right released\n");
 					_vm->mouse.handleButtonUp(SerialMouse::ButtonType::Right);
 				}
 			}
