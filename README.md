@@ -1,4 +1,4 @@
-# PortentaX86: A portable, open-source 8086 PC emulator for Portenta H7
+# Arduino_PortentaX86: A portable, open-source 8086 PC emulator for Portenta H7
 X86 emulator derived from Faux86
 
 ## Features
@@ -8,7 +8,7 @@ X86 emulator derived from Faux86
 - Serial mouse emulation
 
 ## Usage
-By default PortentaX86 boots from a floppy image dosboot.img which in the emulator is mounted as drive A.
+By default Arduino_PortentaX86 boots from a floppy image dosboot.img which in the emulator is mounted as drive A.
 You should copy a floppy image in internal QSPI "ota" partition to have it running.
 An handy method to load the floppy image is by running "AccessFlashAsUSBDisk" sketch and copying the file in the bigger partition.
 

@@ -1,4 +1,4 @@
-#include "Faux86.h"
+#include "Arduino_PortentaX86.h"
 
 UART mySerial(PG_14, PG_9);
 
