@@ -28,6 +28,8 @@
 #include "RPC.h"
 #include "Keymap.h"
 
+#pragma GCC optimize("O2,inline")
+
 // Embedded disks / ROMS
 #if USE_EMBEDDED_BOOT_FLOPPY
 #include "../data/dosboot.h"
@@ -143,11 +145,105 @@ void on_mouse(uint8_t btn, int8_t x, int8_t y) {
 #include "usb_phy_api.h"
 #include "Arduino_H7_Video.h"
 #include "dsi.h"
+#include "USBHost.h"
 
 extern Arduino_H7_Video display;
 extern uint32_t fb;
 
-bool CKernel::Initialize ()
+#define MOD_CTRL      (0x01 | 0x10)
+#define MOD_SHIFT     (0x02 | 0x20)
+#define MOD_ALT       (0x04 | 0x40)
+#define MOD_WIN       (0x08 | 0x80)
+
+#define LED_NUM_LOCK    1
+#define LED_CAPS_LOCK   2
+#define LED_SCROLL_LOCK 4
+
+static uint8_t key_leds;
+static const char knum[] = "1234567890";
+static const char ksign[] = "!@#$%^&*()";
+static const char tabA[] = "\t -=[]\\#;'`,./";
+static const char tabB[] = "\t _+{}|~:\"~<>?";
+
+bool need_to_send_key_up = false;
+
+static int process_key(tusbh_ep_info_t* ep, const uint8_t* keys)
+{
+  uint8_t modify = keys[0];
+  uint8_t key = keys[2];
+  uint8_t last_leds = key_leds;
+  if (key >= KEY_A && key <= KEY_Z) {
+    char ch = 'A' + key - KEY_A;
+    if ( (!!(modify & MOD_SHIFT)) == (!!(key_leds & LED_CAPS_LOCK)) ) {
+      ch += 'a' - 'A';
+    }
+  } else if (key >= KEY_1 && key <= KEY_0) {
+    if (modify & MOD_SHIFT) {
+    } else {
+    }
+  } else if (key >= KEY_TAB && key <= KEY_SLASH) {
+    if (modify & MOD_SHIFT) {
+    } else {
+    }
+  } else if (key == KEY_ENTER) {
+  } else if (key == KEY_CAPSLOCK) {
+    key_leds ^= LED_CAPS_LOCK;
+  } else if (key == KEY_NUMLOCK) {
+    key_leds ^= LED_NUM_LOCK;
+  } else if (key == KEY_SCROLLLOCK) {
+    key_leds ^= LED_SCROLL_LOCK;
+  }
+
+  if (key_leds != last_leds) {
+    tusbh_set_keyboard_led(ep, key_leds);
+  }
+  if (keys[0] != 0 || keys[1] != 0 || keys[2] != 0) {
+    on_key(keys[0], keys[1], keys[2]);
+    need_to_send_key_up = true;
+  } else if (need_to_send_key_up) {
+    on_key(keys[0], keys[1], keys[2]);
+    need_to_send_key_up = false;
+  }
+  return 0;
+}
+
+static int process_mouse(tusbh_ep_info_t* ep, const uint8_t* mouse)
+{
+  uint8_t btn = mouse[0];
+  int8_t x = ((int8_t*)mouse)[1];
+  int8_t y = ((int8_t*)mouse)[2];
+  on_mouse(btn, x, y);
+}
+
+static const tusbh_boot_key_class_t cls_boot_key = {
+  .backend = &tusbh_boot_keyboard_backend,
+  .on_key = process_key
+};
+
+static const tusbh_boot_mouse_class_t cls_boot_mouse = {
+  .backend = &tusbh_boot_mouse_backend,
+  .on_mouse = process_mouse
+};
+
+static const tusbh_hid_class_t cls_hid = {
+  .backend = &tusbh_hid_backend,
+  //.on_recv_data = process_hid_recv,
+  //.on_send_done = process_hid_sent,
+};
+
+static const tusbh_hub_class_t cls_hub = {
+  .backend = &tusbh_hub_backend,
+};
+
+static const tusbh_class_reg_t class_table[] = {
+  (tusbh_class_reg_t)&cls_boot_key,
+  (tusbh_class_reg_t)&cls_boot_mouse,
+  (tusbh_class_reg_t)&cls_hub,
+  (tusbh_class_reg_t)&cls_hid,
+  0,
+};
+
+bool CKernel::Initialize (bool dualcore)
 {
 	bool bOK = true;
 
@@ -162,11 +258,16 @@ bool CKernel::Initialize ()
 	wifi_data_fs.mount(&wifi_data);
 	ota_data_fs.mount(&ota_data);
 
-	RPC.begin();
-	delay(100);
+	if (dualcore) {
+		RPC.begin();
+		delay(100);
 
-	RPC.bind("on_key", on_key);
-	RPC.bind("on_mouse", on_mouse);
+		RPC.bind("on_key", on_key);
+		RPC.bind("on_mouse", on_mouse);
+	} else {
+		static USBHost usb;
+		usb.Init(USB_CORE_ID_HS, class_table);
+	}
 
 	if(bOK)
 	{
@@ -239,7 +340,6 @@ TShutdownMode CKernel::Run (void)
 	while (vm->simulate())
 	{
 		HostInterface->tick(*vm);
-		//m_Timer.MsDelay (0);
 	}
 
 	return ShutdownHalt;

@@ -23,6 +23,8 @@
 #include "kernel.h"
 #include "FatFsDisk.h"
 
+#pragma GCC optimize("O2,inline")
+
 using namespace Faux86;
 
 CircleHostInterface* CircleHostInterface::instance;

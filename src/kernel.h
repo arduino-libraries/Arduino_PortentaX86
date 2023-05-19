@@ -53,7 +53,7 @@ public:
 	CKernel (void);
 	~CKernel (void);
 
-	bool Initialize ();
+	bool Initialize (bool dualcore = true);
 
 	TShutdownMode Run (void);
 
