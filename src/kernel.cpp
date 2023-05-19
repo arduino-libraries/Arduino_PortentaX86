@@ -140,8 +140,12 @@ void on_mouse(uint8_t btn, int8_t x, int8_t y) {
 	}
 }
 
-void DG_Init();
 #include "usb_phy_api.h"
+#include "Arduino_H7_Video.h"
+#include "dsi.h"
+
+extern Arduino_H7_Video display;
+extern uint32_t fb;
 
 bool CKernel::Initialize ()
 {
@@ -152,7 +156,8 @@ bool CKernel::Initialize ()
 	get_usb_phy()->deinit();
 	NVIC_DisableIRQ(OTG_HS_IRQn);
 
-	DG_Init();
+	display.begin();
+	fb = dsi_getCurrentFrameBuffer();
 
 	wifi_data_fs.mount(&wifi_data);
 	ota_data_fs.mount(&ota_data);

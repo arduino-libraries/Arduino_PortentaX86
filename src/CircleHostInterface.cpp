@@ -28,16 +28,17 @@ using namespace Faux86;
 CircleHostInterface* CircleHostInterface::instance;
 
 #include "Arduino.h"
-#include "Portenta_Video.h"
+#include "Arduino_H7_Video.h"
+#include "dsi.h"
 #include "SDRAM.h"
 
-struct edid recognized_edid;
 uint32_t LCD_X_Size = 0, LCD_Y_Size = 0;
 
 DMA2D_HandleTypeDef DMA2D_Handle;
 uint8_t* DG_ScreenBuffer = NULL;
 
 uint32_t fb;
+Arduino_H7_Video display(640, 480, USBCVideo);
 
 uint32_t __ALIGNED(32) L8_CLUT[256];
 static DMA2D_CLUTCfgTypeDef clut;
@@ -111,47 +112,18 @@ void DG_DrawFrame()
 #if 0 //def CORE_CM7
   SCB_CleanInvalidateDCache();
   SCB_InvalidateICache();
-  SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
-  SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
+  SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  display.width() * display.height());
+  SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  display.width() * display.height() *2);
 #endif
   DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
 #ifdef CORE_CM7
   SCB_CleanInvalidateDCache();
-  //SCB_CleanInvalidateDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() * 4);
-  //SCB_CleanDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  stm32_getXSize() * stm32_getYSize());
-  //SCB_CleanDCache_by_Addr((uint32_t *)fb,  stm32_getXSize() * stm32_getYSize() *2);
+  //SCB_CleanInvalidateDCache_by_Addr((uint32_t *)fb,  display.width() * display.height() * 4);
+  //SCB_CleanDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  display.width() * display.height());
+  //SCB_CleanDCache_by_Addr((uint32_t *)fb,  display.width() * display.height() *2);
 #endif
-	fb = getNextFrameBuffer();
-}
-
-void DG_Init()
-{
-  int ret = -1;
-
-  ret = anx7625_init(0);
-  if(ret < 0) {
-    //printf("Cannot continue, anx7625 init failed.\n");
-    while(1);
-  }
-
-  anx7625_wait_hpd_event(0);
-  anx7625_dp_get_edid(0, &recognized_edid);
-  //edid_set_framebuffer_bits_per_pixel(&recognized_edid, 16, 0);
-  //set_display_mode(&recognized_edid, EDID_MODE_720x480_60Hz);
-  //anx7625_dp_start(0, &recognized_edid, EDID_MODE_1280x720_60Hz);
-  anx7625_dp_start(0, &recognized_edid, EDID_MODE_640x480_60Hz);
-
-  LCD_X_Size = stm32_getXSize();
-  LCD_Y_Size = stm32_getYSize();
-
-  SDRAM.begin(getFramebufferEnd());
-
-  fb = getNextFrameBuffer();
-
-  //fb = getNextFrameBuffer();
-
-  stm32_LCD_Clear(0xFFFFFF00);
-  stm32_LCD_Clear(0xFFFFFF00);
+	fb = dsi_getActiveFrameBuffer();
+	dsi_drawCurrentFrameBuffer();
 }
 
 #include <stdarg.h>
@@ -196,12 +168,12 @@ void Faux86::log(Faux86::LogChannel channel, const char* message, ...)
 void CircleFrameBufferInterface::init(uint32_t desiredWidth, uint32_t desiredHeight)
 {	
 	if (DG_ScreenBuffer == NULL) {
-		DG_ScreenBuffer = (uint8_t*)malloc(stm32_getXSize() * stm32_getYSize());
+		DG_ScreenBuffer = (uint8_t*)malloc(display.width() * display.height());
 	}
-	memset(DG_ScreenBuffer, 0, stm32_getXSize() * stm32_getYSize());
+	memset(DG_ScreenBuffer, 0, display.width() * display.height());
 
 	log(Log, "init: requesting size %d %d", desiredWidth, desiredHeight);
-	log(Log, "got size %d %d", stm32_getXSize(), stm32_getYSize());
+	log(Log, "got size %d %d", display.width(), display.height());
 
 	_expected_width = desiredWidth;
 	_expected_height = desiredHeight;
@@ -220,15 +192,15 @@ void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredH
 		return;
 
 	log(Log, "resize: requesting size %d %d", desiredWidth, desiredHeight);
-	log(Log, "got size %d %d", stm32_getXSize(), stm32_getYSize());
+	log(Log, "got size %d %d", display.width(), display.height());
 
 	_expected_width = desiredWidth;
 	_expected_height = desiredHeight;
 
 	free(DG_ScreenBuffer);
 
-	DG_ScreenBuffer = (uint8_t*)malloc(stm32_getXSize() * stm32_getYSize());
-	memset(DG_ScreenBuffer, 0, stm32_getXSize() * stm32_getYSize());
+	DG_ScreenBuffer = (uint8_t*)malloc(display.width() * display.height());
+	memset(DG_ScreenBuffer, 0, display.width() * display.height());
 
 	surface = new RenderSurface();
 	surface->width = desiredWidth;
@@ -409,7 +381,7 @@ void CircleHostInterface::queueEvent(InputEvent& inEvent)
 	}
 }
 
-void CircleHostInterface::queueEvent(EventType eventType, u16 scancode)
+void CircleHostInterface::queueEvent(EventType eventType, uint16_t scancode)
 {
 	if(scancode != 0)
 	{
