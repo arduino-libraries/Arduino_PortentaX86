@@ -100,7 +100,7 @@ void on_key(uint8_t k1, uint8_t k2, uint8_t k3) {
 			_vm->input.handleKeyUp(usb2xtMapping[keys[2]]);			
 		}
 
-		//printf("received %x %x %x\n", k1, k2, k3);
+		printf("received %x %x %x\n", k1, k2, k3);
 		keys[0] = k1;
 		keys[1] = k2;
 		keys[2] = k3;
@@ -145,10 +145,15 @@ void on_mouse(uint8_t btn, int8_t x, int8_t y) {
 #include "usb_phy_api.h"
 #include "Arduino_H7_Video.h"
 #include "dsi.h"
-#include "USBHost.h"
 
 extern Arduino_H7_Video display;
 extern uint32_t fb;
+
+#ifdef ARDUINO_GIGA
+
+#include "USBHostGiga.h"
+
+#else
 
 #define MOD_CTRL      (0x01 | 0x10)
 #define MOD_SHIFT     (0x02 | 0x20)
@@ -243,14 +248,19 @@ static const tusbh_class_reg_t class_table[] = {
   0,
 };
 
+#include "USBHost.h"
+#endif
+
+Keyboard keyb;
+
 bool CKernel::Initialize (bool dualcore)
 {
 	bool bOK = true;
 
-	// Video begin
-	// USBHOST begin
+#ifndef ARDUINO_GIGA
 	get_usb_phy()->deinit();
 	NVIC_DisableIRQ(OTG_HS_IRQn);
+#endif
 
 	display.begin();
 	fb = dsi_getCurrentFrameBuffer();
@@ -265,8 +275,12 @@ bool CKernel::Initialize (bool dualcore)
 		RPC.bind("on_key", on_key);
 		RPC.bind("on_mouse", on_mouse);
 	} else {
+		#ifdef ARDUINO_GIGA
+		keyb.begin();
+		#else
 		static USBHost usb;
 		usb.Init(USB_CORE_ID_HS, class_table);
+		#endif
 	}
 
 	if(bOK)
@@ -339,6 +353,11 @@ TShutdownMode CKernel::Run (void)
 {
 	while (vm->simulate())
 	{
+		if (keyb.available()) {
+   			auto _key = keyb.read();
+			on_key(0, 0, _key.keys[0]);
+
+		}
 		HostInterface->tick(*vm);
 	}
 

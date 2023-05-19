@@ -40,7 +40,12 @@ DMA2D_HandleTypeDef DMA2D_Handle;
 uint8_t* DG_ScreenBuffer = NULL;
 
 uint32_t fb;
+#ifdef ARDUINO_GIGA
+Arduino_H7_Video display(800, 480, GigaDisplayShield);
+//Arduino_H7_Video display(480, 800, GigaDisplayShield);
+#else
 Arduino_H7_Video display(640, 480, USBCVideo);
+#endif
 
 uint32_t __ALIGNED(32) L8_CLUT[256];
 static DMA2D_CLUTCfgTypeDef clut;
@@ -62,6 +67,39 @@ static void loadPalette() {
 
   HAL_DMA2D_CLUTStartLoad(&DMA2D_Handle, &clut, 1);
   HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 1000);
+}
+
+static void DMA2D_Line_to_column(void *pSrc, void *pDst, uint32_t xSize, uint32_t lineStridePixels)
+{
+  HAL_StatusTypeDef hal_status = HAL_OK;
+
+  /* Configure the DMA2D Mode, Color Mode and output offset */
+  DMA2D_Handle.Init.Mode         = DMA2D_M2M_PFC;
+  DMA2D_Handle.Init.ColorMode    = DMA2D_OUTPUT_RGB565;
+  DMA2D_Handle.Init.OutputOffset = lineStridePixels;
+
+  /* Foreground Configuration */
+  DMA2D_Handle.LayerCfg[1].AlphaMode = DMA2D_REPLACE_ALPHA;
+  DMA2D_Handle.LayerCfg[1].InputAlpha = 0x00;
+  DMA2D_Handle.LayerCfg[1].InputColorMode = DMA2D_INPUT_L8;
+  DMA2D_Handle.LayerCfg[1].InputOffset = 0;
+
+  DMA2D_Handle.Instance = DMA2D;
+
+  /* DMA2D Initialization */
+  if (HAL_DMA2D_Init(&DMA2D_Handle) == HAL_OK)
+  {
+    if (HAL_DMA2D_ConfigLayer(&DMA2D_Handle, 1) == HAL_OK)
+    {
+      /* xSize x 1 = size in pixels to copy */
+      /* Width = 1, Height = xSize          */
+      if (HAL_DMA2D_Start(&DMA2D_Handle, (uint32_t)pSrc, (uint32_t)pDst, 1, xSize) == HAL_OK)
+      {
+        /* Polling For DMA transfer */
+        hal_status = HAL_DMA2D_PollForTransfer(&DMA2D_Handle, 10);
+      }
+    }
+  }
 }
 
 static void DMA2D_Init(uint16_t xsize, uint16_t ysize)
@@ -117,7 +155,24 @@ void DG_DrawFrame()
   SCB_InvalidateDCache_by_Addr((uint32_t *)DG_ScreenBuffer,  display.width() * display.height());
   SCB_InvalidateDCache_by_Addr((uint32_t *)fb,  display.width() * display.height() *2);
 #endif
-  DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
+
+#if TEST_DISPLAY_ROTATED_DMA2D
+  if (display.isRotated()) {
+	// copy every line to a column using DMA2D
+	uint8_t* src = (uint8_t *)DG_ScreenBuffer;
+	uint8_t* dst = (uint8_t *)fb;
+	for (int i = 0; i < display.height(); i++) {
+		DMA2D_Line_to_column(src, dst, display.height(), display.width() - 1);
+		src +=  display.width();
+		dst +=  2;
+	}
+	painting = false;
+  } else {
+  	DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
+  }
+#else
+  	DMA2D_CopyBuffer((uint32_t *)DG_ScreenBuffer, (uint32_t *)fb);
+#endif
 #ifdef CORE_CM7
   SCB_CleanInvalidateDCache();
   //SCB_CleanInvalidateDCache_by_Addr((uint32_t *)fb,  display.width() * display.height() * 4);
@@ -148,8 +203,6 @@ void Faux86::log(Faux86::LogChannel channel, const char* message, ...)
 	}
 	va_end(myargs);
 #endif
-
-  return;
 
   char buffer[256];
   va_list args;
@@ -214,7 +267,7 @@ void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredH
 RenderSurface* CircleFrameBufferInterface::getSurface()
 { 
 	if (surface == nullptr) {
-		init(640, 480);
+		init(display.width(), display.height());
 	}
 	return surface;
 }

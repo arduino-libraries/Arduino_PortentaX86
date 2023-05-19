@@ -71,7 +71,7 @@ void Renderer::init()
 {
 	fb = &vm.config->hostSystemInterface->getFrameBuffer();
 
-	fb->init(OUTPUT_FRAMEBUFFER_WIDTH, OUTPUT_FRAMEBUFFER_HEIGHT);
+	//fb->init(OUTPUT_FRAMEBUFFER_WIDTH, OUTPUT_FRAMEBUFFER_HEIGHT);
 	//fb->init(320, 200);
 	//fb->init(1920, 1080);
 	//fb->init(1024, 1024);
@@ -289,8 +289,11 @@ void Renderer::stretchBlit ()
 	roughBlit();
 }
 
+#include <stdio.h>
+
 void Renderer::simpleBlit()
 {
+	printf("simple\n");
 	//ProfileBlock block(vm.timing, "Renderer::simpleBlit");
 
 	{
@@ -303,8 +306,10 @@ void Renderer::simpleBlit()
 	}
 }
 
+#include <stdio.h>
 void Renderer::roughBlit () 
 {
+	printf("rough\n");
 	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
 	uint8_t* pixels = hostSurface->pixels;
 	uint32_t pitch = hostSurface->pitch;
@@ -337,6 +342,8 @@ void Renderer::roughBlit ()
 */
 void Renderer::doubleBlit () 
 {
+	printf("double\n");
+
 	uint32_t srcx, srcy, dstx, dsty, curcolor;
 	int32_t ofs;
 	uint8_t* pixels = hostSurface->pixels;
@@ -359,6 +366,34 @@ void Renderer::doubleBlit ()
 		}
 	}
 }
+
+void Renderer::rotatedBlit () 
+{
+	printf("rough\n");
+	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
+	uint8_t* pixels = hostSurface->pixels;
+	uint32_t pitch = hostSurface->width;
+	uint32_t width = hostSurface->width;
+	uint32_t height = hostSurface->height;
+
+	renderSurface->pitch = width;
+
+	{
+		scalemapptr = 0;
+		for (dsty = 0; dsty < height; dsty++)
+		{
+			srcy = scalemap[scalemapptr++];
+			uint8_t* dstPtr = pixels + dsty * pitch;
+
+			for (dstx = 0; dstx < width; dstx++)
+			{
+				srcx = scalemap[scalemapptr++];
+				*dstPtr++ = renderSurface->get(srcy, srcx);
+			}
+		}
+	}
+}
+
 
 void Renderer::onMemoryWrite(uint32_t address, uint8_t value)
 {
@@ -495,6 +530,9 @@ void Renderer::markTextDirty(uint32_t x, uint32_t y)
 }
 
 #include "Arduino.h"
+#include "Arduino_H7_Video.h"
+
+extern Arduino_H7_Video display;
 
 void Renderer::draw () 
 {
@@ -724,7 +762,9 @@ void Renderer::draw ()
 	{
 		if (vm.config->noSmooth)
 		{
-			if (nativeWidth == hostSurface->width && nativeHeight == hostSurface->height)
+			if (display.isRotated()) {
+				rotatedBlit();
+			} else if (nativeWidth == hostSurface->width && nativeHeight == hostSurface->height)
 				simpleBlit();
 			else if (((nativeWidth << 1) == hostSurface->width) && ((nativeHeight << 1) == hostSurface->height))
 				doubleBlit();

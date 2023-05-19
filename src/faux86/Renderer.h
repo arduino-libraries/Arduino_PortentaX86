@@ -83,6 +83,7 @@ namespace Faux86
 		void stretchBlit();
 		void roughBlit();
 		void doubleBlit();
+		void rotatedBlit();
 
 		bool screenModeChanged = false;
 		uint32_t nativeWidth = 640, nativeHeight = 400;
