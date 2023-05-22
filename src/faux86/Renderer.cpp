@@ -79,6 +79,7 @@ void Renderer::init()
 	hostSurface = fb->getSurface();
 
 #ifdef DOUBLE_BUFFER
+	//renderSurface = RenderSurface::create(display.width(), display.height());
 	renderSurface = RenderSurface::create(1024, 1024);
 #else
 	renderSurface = hostSurface;
@@ -115,6 +116,10 @@ void Renderer::createScaleMap()
 
 	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
 	double xscale, yscale;
+
+//	if (display.isRotated()) {
+//		return;
+//	}
 
 	xscale = (double) nativeWidth / (double) hostSurface->width;
 	yscale = (double) nativeHeight / (double) hostSurface->height;
@@ -369,29 +374,31 @@ void Renderer::doubleBlit ()
 
 void Renderer::rotatedBlit () 
 {
-	printf("rough\n");
 	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
 	uint8_t* pixels = hostSurface->pixels;
-	uint32_t pitch = hostSurface->width;
+	uint32_t pitch = hostSurface->pitch;
 	uint32_t width = hostSurface->width;
 	uint32_t height = hostSurface->height;
 
-	renderSurface->pitch = width;
+	printf("pitch: %d\n", pitch);
+	printf("width: %d\n", width);
+	printf("height: %d\n", height);
 
 	{
 		scalemapptr = 0;
-		for (dsty = 0; dsty < height; dsty++)
+		for (dstx = 0; dstx < height; dstx++)
 		{
-			srcy = scalemap[scalemapptr++];
-			uint8_t* dstPtr = pixels + dsty * pitch;
+			srcx = scalemap[scalemapptr++];
+			uint8_t* dstPtr = pixels + dstx * height;
 
-			for (dstx = 0; dstx < width; dstx++)
+			for (dsty = 0; dsty < width; dsty++)
 			{
-				srcx = scalemap[scalemapptr++];
-				*dstPtr++ = renderSurface->get(srcy, srcx);
+				srcy = scalemap[scalemapptr++];
+				*dstPtr++ = renderSurface->get(srcx, srcy);
 			}
 		}
 	}
+
 }
 
 
@@ -530,9 +537,6 @@ void Renderer::markTextDirty(uint32_t x, uint32_t y)
 }
 
 #include "Arduino.h"
-#include "Arduino_H7_Video.h"
-
-extern Arduino_H7_Video display;
 
 void Renderer::draw () 
 {
@@ -780,8 +784,13 @@ void Renderer::draw ()
 RenderSurface* RenderSurface::create(uint32_t inWidth, uint32_t inHeight)
 {
 	RenderSurface* newSurface = new RenderSurface();
-	newSurface->width = newSurface->pitch = inWidth;
-	newSurface->height = inHeight;
+	if (display.isRotated()) {
+		newSurface->width = newSurface->pitch = inHeight;
+		newSurface->height = inWidth;
+	} else {
+		newSurface->width = newSurface->pitch = inWidth;
+		newSurface->height = inHeight;
+	}
 	newSurface->pixels = (uint8_t*)ea_malloc(inWidth * inHeight);
 	return newSurface;
 }

@@ -27,6 +27,10 @@
 #include <assert.h>
 #endif
 
+
+#include "Arduino_H7_Video.h"
+extern Arduino_H7_Video display;
+
 namespace Faux86
 {
 	class VM;
@@ -41,7 +45,11 @@ namespace Faux86
 #ifdef _WIN32
 			assert(x < width && y < height);
 #endif
-			pixels[y * pitch + x] = col;
+			//if (display.isRotated()) {
+			//	pixels[x * height + (width - y)] = col;
+			//} else {
+				pixels[y * pitch + x] = col;
+			//}
 		}
 
 		inline uint8_t get(uint32_t x, uint32_t y)
@@ -49,7 +57,11 @@ namespace Faux86
 #ifdef _WIN32
 			assert(x < width && y < height);
 #endif
-			return pixels[y * pitch + x];
+			if (display.isRotated()) {
+				return pixels[x * width +  y];
+			} else {
+				return pixels[y * pitch + x];
+			}
 		}
 
 		uint8_t* pixels;
