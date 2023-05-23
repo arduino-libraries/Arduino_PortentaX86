@@ -117,13 +117,11 @@ void Renderer::createScaleMap()
 	uint32_t srcx, srcy, dstx, dsty, scalemapptr;
 	double xscale, yscale;
 
-//	if (display.isRotated()) {
-//		return;
-//	}
-
 	xscale = (double) nativeWidth / (double) hostSurface->width;
 	yscale = (double) nativeHeight / (double) hostSurface->height;
+
 	scalemapptr = 0;
+
 	for (dsty=0; dsty<(uint32_t)hostSurface->height; dsty++) 
 	{
 		srcy = (uint32_t) ( (double) dsty * yscale);
@@ -380,10 +378,6 @@ void Renderer::rotatedBlit ()
 	uint32_t width = hostSurface->width;
 	uint32_t height = hostSurface->height;
 
-	printf("pitch: %d\n", pitch);
-	printf("width: %d\n", width);
-	printf("height: %d\n", height);
-
 	{
 		scalemapptr = 0;
 		for (dstx = 0; dstx < height; dstx++)
@@ -394,7 +388,7 @@ void Renderer::rotatedBlit ()
 			for (dsty = 0; dsty < width; dsty++)
 			{
 				srcy = scalemap[scalemapptr++];
-				*dstPtr++ = renderSurface->get(srcx, srcy);
+				*dstPtr++ = renderSurface->get(srcx, 380 - srcy);
 			}
 		}
 	}

@@ -46,7 +46,7 @@ namespace Faux86
 			assert(x < width && y < height);
 #endif
 			//if (display.isRotated()) {
-			//	pixels[x * height + (width - y)] = col;
+			//	pixels[x * width + y] = col;
 			//} else {
 				pixels[y * pitch + x] = col;
 			//}
@@ -57,11 +57,11 @@ namespace Faux86
 #ifdef _WIN32
 			assert(x < width && y < height);
 #endif
-			if (display.isRotated()) {
-				return pixels[x * width +  y];
-			} else {
+			//if (display.isRotated()) {
+			//	return pixels[x * width +  y];
+			//} else {
 				return pixels[y * pitch + x];
-			}
+			//}
 		}
 
 		uint8_t* pixels;

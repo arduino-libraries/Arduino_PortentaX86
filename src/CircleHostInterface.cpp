@@ -147,6 +147,7 @@ static void DMA2D_CopyBuffer(uint32_t *pSrc, uint32_t *pDst)
 #endif
 }
 
+static int counter  = 0;
 void DG_DrawFrame()
 {
 #if 0 //def CORE_CM7
@@ -238,7 +239,8 @@ void CircleFrameBufferInterface::init(uint32_t desiredWidth, uint32_t desiredHei
 	surface->height = desiredHeight;
 	surface->pitch = desiredWidth;
 	surface->pixels = (uint8_t*)DG_ScreenBuffer;
-	DMA2D_Init(getSurface()->width, getSurface()->height);
+
+	DMA2D_Init(display.width(), display.height());
 }
 
 void CircleFrameBufferInterface::resize(uint32_t desiredWidth, uint32_t desiredHeight)
@@ -309,7 +311,7 @@ void CircleFrameBufferInterface::setPalette(Palette* palette, bool forced)
 		uint32_t colour = (0xff << 24) | (palette->colours[n].r << 16) | (palette->colours[n].g << 8) | (palette->colours[n].b);
 		L8_CLUT[n] = colour;
 	}
-	DMA2D_Init(getSurface()->width, getSurface()->height);
+	DMA2D_Init(display.width(), display.height());
 	painting = false;
 	//loadPalette();
 }
